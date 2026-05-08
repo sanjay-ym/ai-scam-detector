@@ -516,7 +516,7 @@ def dashboard():
             labels: ['Scam', 'Safe'],
 
             datasets: [{
-                data: [{scam}, {safe}],
+                data: [data: [""" + str(scam) + """, """ + str(safe) + """],
                 backgroundColor: ['red', 'green']
             }]
 
