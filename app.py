@@ -90,7 +90,7 @@ def home():
     <h3 class="text-dark">
     📂 File Threat Analysis
     </h3>
-c
+
     <form action="/upload"
     method="POST"
     enctype="multipart/form-data">
@@ -143,8 +143,6 @@ def predict():
 
     safe_percent = round((1 - prob) * 100, 2)
 
-    # ---------------- RISK LEVEL ----------------
-
     if prob > 0.8:
         level = "EXTREME"
 
@@ -156,8 +154,6 @@ def predict():
 
     else:
         level = "LOW"
-
-    # ---------------- DANGER WORDS ----------------
 
     danger_words = [
         "win",
@@ -176,8 +172,6 @@ def predict():
 
     found = [w for w in danger_words if w in msg.lower()]
 
-    # ---------------- PHISHING DETECTION ----------------
-
     phishing_words = [
         "http",
         "https",
@@ -192,8 +186,6 @@ def predict():
     phishing_found = [
         w for w in phishing_words if w in msg.lower()
     ]
-
-    # ---------------- SCAM RESULT ----------------
 
     if result == 1:
 
@@ -264,8 +256,6 @@ def predict():
         </body>
 
         """
-
-    # ---------------- SAFE RESULT ----------------
 
     else:
 
@@ -339,13 +329,9 @@ def upload():
 
     text = ""
 
-    # TXT FILE
-
     if file.filename.endswith('.txt'):
 
         text = file.read().decode('utf-8')
-
-    # PDF FILE
 
     elif file.filename.endswith('.pdf'):
 
@@ -375,8 +361,6 @@ def upload():
         </body>
 
         """
-
-    # ---------------- AI ANALYSIS ----------------
 
     data = vectorizer.transform([text])
 
@@ -416,340 +400,249 @@ def upload():
 
     found = [w for w in danger_words if w in text.lower()]
 
-    # ---------------- SCAM FILE ----------------
-# ---------------- FILE TYPE ----------------
+    file_type = file.filename.split('.')[-1].upper()
 
-file_type = file.filename.split('.')[-1].upper()
+    if result == 1:
 
-# ---------------- SCAM FILE ----------------
+        return f"""
 
-if result == 1:
+        <html>
 
-    return f"""
+        <head>
 
-    <html>
+        <title>Threat Analysis Result</title>
 
-    <head>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
-    <title>Threat Analysis Result</title>
+        </head>
 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-
-    <style>
-
-    body{{
+        <body style="
         background:linear-gradient(to right,#141e30,#243b55);
         color:white;
         font-family:Arial;
         padding:40px;
-    }}
+        ">
 
-    .main-card{{
-        background:#1c1c1c;
-        border-radius:25px;
-        padding:40px;
-        box-shadow:0px 10px 30px rgba(0,0,0,0.5);
-    }}
+        <div class="container">
 
-    .badge-box{{
-        padding:15px;
-        border-radius:15px;
-        text-align:center;
-        font-weight:bold;
-        font-size:20px;
-    }}
+        <div class="card bg-dark p-5 shadow-lg">
 
-    </style>
+        <h1 class="text-danger text-center">
+        ⚠ HIGH RISK FILE DETECTED
+        </h1>
 
-    </head>
+        <hr>
 
-    <body>
+        <div class="row text-center mt-4">
 
-    <div class="container">
+            <div class="col-md-4">
 
-    <div class="main-card">
+                <div class="card bg-danger p-3">
 
-    <h1 class="text-danger text-center">
-    ⚠ HIGH RISK FILE DETECTED
-    </h1>
+                    <h4>Scam Probability</h4>
 
-    <hr>
+                    <h2>{scam_percent}%</h2>
 
-    <div class="row text-center mt-4">
+                </div>
 
-        <div class="col-md-4">
+            </div>
 
-            <div class="badge-box bg-danger">
+            <div class="col-md-4">
 
-                Scam Probability
+                <div class="card bg-warning text-dark p-3">
 
-                <h2>{scam_percent}%</h2>
+                    <h4>Risk Level</h4>
+
+                    <h2>{level}</h2>
+
+                </div>
+
+            </div>
+
+            <div class="col-md-4">
+
+                <div class="card bg-primary p-3">
+
+                    <h4>File Type</h4>
+
+                    <h2>{file_type}</h2>
+
+                </div>
 
             </div>
 
         </div>
 
-        <div class="col-md-4">
+        <div class="mt-5">
 
-            <div class="badge-box bg-warning text-dark">
+        <h3>
+        🚨 Suspicious Keywords
+        </h3>
 
-                Risk Level
+        <div class="alert alert-danger">
 
-                <h2>{level}</h2>
-
-            </div>
-
-        </div>
-
-        <div class="col-md-4">
-
-            <div class="badge-box bg-primary">
-
-                File Type
-
-                <h2>{file_type}</h2>
-
-            </div>
+        {', '.join(found) if found else 'No keywords detected'}
 
         </div>
 
-    </div>
+        </div>
 
-    <div class="mt-5">
+        <div class="mt-4">
 
-    <h3>
-    🚨 Suspicious Keywords
-    </h3>
+        <h3>
+        📊 Threat Meter
+        </h3>
 
-    <div class="alert alert-danger mt-3">
+        <div class="progress" style="height:35px;">
 
-    {', '.join(found) if found else 'No keywords detected'}
+        <div class="progress-bar progress-bar-striped progress-bar-animated bg-danger"
+        style="width:{scam_percent}%">
 
-    </div>
+        {scam_percent}%
 
-    </div>
+        </div>
 
-    <div class="mt-4">
+        </div>
 
-    <h3>
-    📊 Threat Meter
-    </h3>
+        </div>
 
-    <div class="progress" style="height:35px;">
+        <div class="text-center mt-5">
 
-    <div class="progress-bar progress-bar-striped progress-bar-animated bg-danger"
-    style="width:{scam_percent}%">
+        <a href="/"
+        class="btn btn-danger btn-lg">
+        ⬅ Back
+        </a>
 
-    {scam_percent}%
+        <a href="/dashboard"
+        class="btn btn-light btn-lg">
+        📊 Dashboard
+        </a>
 
-    </div>
+        </div>
 
-    </div>
+        </div>
 
-    </div>
+        </div>
 
-    <div class="mt-5">
+        </body>
 
-    <h4>
-    🛡 Security Recommendation
-    </h4>
+        </html>
 
-    <ul>
+        """
 
-    <li>Do not click suspicious links</li>
+    else:
 
-    <li>Avoid sharing OTP or bank details</li>
+        return f"""
 
-    <li>Verify sender identity</li>
+        <html>
 
-    <li>Scan attachments before opening</li>
+        <head>
 
-    </ul>
+        <title>Threat Analysis Result</title>
 
-    </div>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
-    <div class="text-center mt-5">
+        </head>
 
-    <a href="/"
-    class="btn btn-danger btn-lg">
-    ⬅ Back to Home
-    </a>
-
-    <a href="/dashboard"
-    class="btn btn-light btn-lg">
-    📊 Dashboard
-    </a>
-
-    </div>
-
-    </div>
-
-    </div>
-
-    </body>
-
-    </html>
-
-    """
-
-# ---------------- SAFE FILE ----------------
-
-else:
-
-    return f"""
-
-    <html>
-
-    <head>
-
-    <title>Threat Analysis Result</title>
-
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-
-    <style>
-
-    body{{
+        <body style="
         background:linear-gradient(to right,#11998e,#38ef7d);
         color:white;
         font-family:Arial;
         padding:40px;
-    }}
+        ">
 
-    .main-card{{
-        background:white;
-        color:black;
-        border-radius:25px;
-        padding:40px;
-        box-shadow:0px 10px 30px rgba(0,0,0,0.4);
-    }}
+        <div class="container">
 
-    .badge-box{{
-        padding:15px;
-        border-radius:15px;
-        text-align:center;
-        font-weight:bold;
-        font-size:20px;
-        color:white;
-    }}
+        <div class="card p-5 shadow-lg">
 
-    </style>
+        <h1 class="text-success text-center">
+        ✅ FILE APPEARS SAFE
+        </h1>
 
-    </head>
+        <hr>
 
-    <body>
+        <div class="row text-center mt-4">
 
-    <div class="container">
+            <div class="col-md-4">
 
-    <div class="main-card">
+                <div class="card bg-success text-white p-3">
 
-    <h1 class="text-success text-center">
-    ✅ FILE APPEARS SAFE
-    </h1>
+                    <h4>Safe Probability</h4>
 
-    <hr>
+                    <h2>{safe_percent}%</h2>
 
-    <div class="row text-center mt-4">
+                </div>
 
-        <div class="col-md-4">
+            </div>
 
-            <div class="badge-box bg-success">
+            <div class="col-md-4">
 
-                Safe Probability
+                <div class="card bg-primary text-white p-3">
 
-                <h2>{safe_percent}%</h2>
+                    <h4>Risk Level</h4>
+
+                    <h2>LOW</h2>
+
+                </div>
+
+            </div>
+
+            <div class="col-md-4">
+
+                <div class="card bg-dark text-white p-3">
+
+                    <h4>File Type</h4>
+
+                    <h2>{file_type}</h2>
+
+                </div>
 
             </div>
 
         </div>
 
-        <div class="col-md-4">
+        <div class="mt-5">
 
-            <div class="badge-box bg-primary">
+        <h3>
+        📊 Safety Meter
+        </h3>
 
-                Risk Level
+        <div class="progress" style="height:35px;">
 
-                <h2>LOW</h2>
+        <div class="progress-bar progress-bar-striped progress-bar-animated bg-success"
+        style="width:{safe_percent}%">
 
-            </div>
-
-        </div>
-
-        <div class="col-md-4">
-
-            <div class="badge-box bg-dark">
-
-                File Type
-
-                <h2>{file_type}</h2>
-
-            </div>
+        {safe_percent}%
 
         </div>
 
-    </div>
+        </div>
 
-    <div class="mt-5">
+        </div>
 
-    <h3>
-    📊 Safety Meter
-    </h3>
+        <div class="text-center mt-5">
 
-    <div class="progress" style="height:35px;">
+        <a href="/"
+        class="btn btn-success btn-lg">
+        ⬅ Back
+        </a>
 
-    <div class="progress-bar progress-bar-striped progress-bar-animated bg-success"
-    style="width:{safe_percent}%">
+        <a href="/dashboard"
+        class="btn btn-dark btn-lg">
+        📊 Dashboard
+        </a>
 
-    {safe_percent}%
+        </div>
 
-    </div>
+        </div>
 
-    </div>
+        </div>
 
-    </div>
+        </body>
 
-    <div class="mt-5">
+        </html>
 
-    <h4>
-    🛡 Security Status
-    </h4>
-
-    <ul>
-
-    <li>No major phishing indicators found</li>
-
-    <li>File content appears safe</li>
-
-    <li>AI analysis completed successfully</li>
-
-    <li>Threat level is minimal</li>
-
-    </ul>
-
-    </div>
-
-    <div class="text-center mt-5">
-
-    <a href="/"
-    class="btn btn-success btn-lg">
-    ⬅ Back to Home
-    </a>
-
-    <a href="/dashboard"
-    class="btn btn-dark btn-lg">
-    📊 Dashboard
-    </a>
-
-    </div>
-
-    </div>
-
-    </div>
-
-    </body>
-
-    </html>
-
-    """
+        """
 
 # ------------------ DASHBOARD ------------------
 
@@ -781,26 +674,14 @@ def dashboard():
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
-    <style>
-
-    body{{
-        background:linear-gradient(to right,#0f2027,#203a43,#2c5364);
-        color:white;
-        font-family:Arial;
-        padding:40px;
-    }}
-
-    .card-box{{
-        border-radius:20px;
-        padding:30px;
-        box-shadow:0px 8px 25px rgba(0,0,0,0.4);
-    }}
-
-    </style>
-
     </head>
 
-    <body>
+    <body style="
+    background:linear-gradient(to right,#0f2027,#203a43,#2c5364);
+    color:white;
+    font-family:Arial;
+    padding:40px;
+    ">
 
     <div class="container">
 
@@ -812,7 +693,7 @@ def dashboard():
 
         <div class="col-md-4">
 
-            <div class="card-box bg-danger">
+            <div class="card bg-danger p-4">
 
                 <h1>{scam}</h1>
 
@@ -824,7 +705,7 @@ def dashboard():
 
         <div class="col-md-4">
 
-            <div class="card-box bg-success">
+            <div class="card bg-success p-4">
 
                 <h1>{safe}</h1>
 
@@ -836,7 +717,7 @@ def dashboard():
 
         <div class="col-md-4">
 
-            <div class="card-box bg-primary">
+            <div class="card bg-primary p-4">
 
                 <h1>{total}</h1>
 
@@ -859,32 +740,6 @@ def dashboard():
         </h4>
 
         <canvas id="chart"></canvas>
-
-    </div>
-
-    <div class="card mt-4 p-4 bg-dark text-white">
-
-        <h3>
-        🛡 System Status: ACTIVE
-        </h3>
-
-        <p>
-        AI Threat Analysis Engine is running successfully.
-        </p>
-
-        <ul>
-
-        <li>✔ Scam Message Detection</li>
-
-        <li>✔ PDF Threat Analysis</li>
-
-        <li>✔ TXT File Analysis</li>
-
-        <li>✔ Phishing Detection</li>
-
-        <li>✔ Risk Level Analytics</li>
-
-        </ul>
 
     </div>
 
