@@ -23,6 +23,8 @@ def home():
 
     <title>AI Scam Detection System</title>
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
     <style>
@@ -34,12 +36,21 @@ def home():
     }
 
     .main-box{
-        margin-top:80px;
+        margin-top:50px;
     }
 
     .card{
         border-radius:20px;
-        box-shadow:0px 8px 25px rgba(0,0,0,0.4);
+        box-shadow:0px 8px 25px rgba(0,0,0,0.5);
+        border:none;
+    }
+
+    textarea{
+        border-radius:15px !important;
+    }
+
+    .btn{
+        border-radius:12px;
     }
 
     </style>
@@ -57,14 +68,14 @@ def home():
     </h1>
 
     <p>
-    Advanced Cybersecurity Intelligence Platform
+    Advanced AI Based Cybersecurity Intelligence Platform
     </p>
 
     </div>
 
-    <div class="card p-5 mt-4">
+    <div class="card bg-dark text-white p-5 mt-4">
 
-    <h3 class="text-dark">
+    <h3>
     📩 Message Analysis
     </h3>
 
@@ -87,7 +98,7 @@ def home():
 
     <hr>
 
-    <h3 class="text-dark">
+    <h3>
     📂 File Threat Analysis
     </h3>
 
@@ -112,7 +123,7 @@ def home():
     <br>
 
     <a href="/dashboard"
-    class="btn btn-dark">
+    class="btn btn-success">
     📊 Open Analytics Dashboard
     </a>
 
@@ -143,6 +154,26 @@ def predict():
 
     safe_percent = round((1 - prob) * 100, 2)
 
+    # ---------------- SAVE STATS ----------------
+
+    try:
+
+        with open("stats.txt", "r") as f:
+            scam, safe = map(int, f.read().split(","))
+
+    except:
+        scam, safe = 0, 0
+
+    if result == 1:
+        scam += 1
+    else:
+        safe += 1
+
+    with open("stats.txt", "w") as f:
+        f.write(f"{scam},{safe}")
+
+    # ---------------- RISK LEVEL ----------------
+
     if prob > 0.8:
         level = "EXTREME"
 
@@ -154,6 +185,8 @@ def predict():
 
     else:
         level = "LOW"
+
+    # ---------------- DANGER WORDS ----------------
 
     danger_words = [
         "win",
@@ -187,137 +220,100 @@ def predict():
         w for w in phishing_words if w in msg.lower()
     ]
 
+    # ---------------- RESULT PAGE ----------------
+
     if result == 1:
 
-        return f"""
-
-        <body style="
-        background:#121212;
-        color:white;
-        font-family:Arial;
-        padding:40px;
-        ">
-
-        <div class="container">
-
-        <div class="card bg-dark text-white p-5 shadow-lg">
-
-        <h1 class="text-danger">
-        ⚠ Threat Detected
-        </h1>
-
-        <hr>
-
-        <h3>
-        Scam Probability: {scam_percent}%
-        </h3>
-
-        <h4>
-        Risk Level:
-        <span class="text-warning">{level}</span>
-        </h4>
-
-        <h4>
-        🚨 Danger Words:
-        </h4>
-
-        <p>
-        {', '.join(found) if found else 'None'}
-        </p>
-
-        <h4>
-        🌐 Phishing Indicators:
-        </h4>
-
-        <p>
-        {', '.join(phishing_found) if phishing_found else 'None'}
-        </p>
-
-        <div class="progress mt-4">
-
-        <div class="progress-bar bg-danger"
-        style="width:{scam_percent}%">
-        {scam_percent}%
-        </div>
-
-        </div>
-
-        <br>
-
-        <a href="/"
-        class="btn btn-danger">
-        ⬅ Back
-        </a>
-
-        </div>
-
-        </div>
-
-        </body>
-
-        """
+        color = "danger"
+        title = "⚠ Scam Message Detected"
 
     else:
 
-        return f"""
+        color = "success"
+        title = "✅ Message Appears Safe"
 
-        <body style="
-        background:#e8fff0;
-        font-family:Arial;
-        padding:40px;
-        ">
+    return f"""
 
-        <div class="container">
+    <html>
 
-        <div class="card p-5 shadow-lg">
+    <head>
 
-        <h1 class="text-success">
-        ✅ Message Appears Safe
-        </h1>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
-        <hr>
+    </head>
 
-        <h3>
-        Safe Probability: {safe_percent}%
-        </h3>
+    <body style="
+    background:#101820;
+    color:white;
+    font-family:Arial;
+    padding:40px;
+    ">
 
-        <h4>
-        Risk Level: LOW
-        </h4>
+    <div class="container">
 
-        <h4>
-        🌐 Phishing Indicators:
-        </h4>
+    <div class="card bg-dark text-white p-5">
 
-        <p>
-        {', '.join(phishing_found) if phishing_found else 'None'}
-        </p>
+    <h1 class="text-{color}">
+    {title}
+    </h1>
 
-        <div class="progress mt-4">
+    <hr>
 
-        <div class="progress-bar bg-success"
-        style="width:{safe_percent}%">
-        {safe_percent}%
-        </div>
+    <h3>
+    Scam Probability: {scam_percent}%
+    </h3>
 
-        </div>
+    <h3>
+    Safe Probability: {safe_percent}%
+    </h3>
 
-        <br>
+    <h3>
+    Risk Level: {level}
+    </h3>
 
-        <a href="/"
-        class="btn btn-success">
-        ⬅ Back
-        </a>
+    <h4>
+    🚨 Danger Words:
+    </h4>
 
-        </div>
+    <p>
+    {', '.join(found) if found else 'None'}
+    </p>
 
-        </div>
+    <h4>
+    🌐 Phishing Indicators:
+    </h4>
 
-        </body>
+    <p>
+    {', '.join(phishing_found) if phishing_found else 'None'}
+    </p>
 
-        """
+    <div class="progress mt-4" style="height:35px;">
 
-# ------------------ FILE UPLOAD ANALYSIS ------------------
+    <div class="progress-bar bg-{color}"
+    style="width:{scam_percent}%">
+    {scam_percent}%
+    </div>
+
+    </div>
+
+    <br>
+
+    <a href="/"
+    class="btn btn-{color}">
+    ⬅ Back
+    </a>
+
+    </div>
+
+    </div>
+
+    </body>
+
+    </html>
+
+    """
+
+# ------------------ FILE ANALYSIS ------------------
 
 @app.route('/upload', methods=['POST'])
 def upload():
@@ -348,17 +344,9 @@ def upload():
 
         return """
 
-        <body style="font-family:Arial;padding:40px;">
-
-        <h2>
-        ❌ Only TXT and PDF files supported
+        <h2 style="font-family:Arial;padding:40px;">
+        ❌ Only TXT and PDF supported
         </h2>
-
-        <a href="/">
-        Go Back
-        </a>
-
-        </body>
 
         """
 
@@ -372,277 +360,144 @@ def upload():
 
     safe_percent = round((1 - prob) * 100, 2)
 
-    if prob > 0.8:
-        level = "EXTREME"
+    # ---------------- SAVE STATS ----------------
 
-    elif prob > 0.6:
-        level = "HIGH"
+    try:
 
-    elif prob > 0.4:
-        level = "MEDIUM"
+        with open("stats.txt", "r") as f:
+            scam, safe = map(int, f.read().split(","))
 
+    except:
+        scam, safe = 0, 0
+
+    if result == 1:
+        scam += 1
     else:
-        level = "LOW"
+        safe += 1
 
-    danger_words = [
-        "win",
-        "free",
-        "otp",
-        "bank",
-        "offer",
-        "urgent",
-        "click",
-        "verify",
-        "account",
-        "gift",
-        "money"
-    ]
+    with open("stats.txt", "w") as f:
+        f.write(f"{scam},{safe}")
 
-    found = [w for w in danger_words if w in text.lower()]
-
-    file_type = file.filename.split('.')[-1].upper()
+    # ---------------- RESULT STYLE ----------------
 
     if result == 1:
 
-        return f"""
-
-        <html>
-
-        <head>
-
-        <title>Threat Analysis Result</title>
-
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-
-        </head>
-
-        <body style="
-        background:linear-gradient(to right,#141e30,#243b55);
-        color:white;
-        font-family:Arial;
-        padding:40px;
-        ">
-
-        <div class="container">
-
-        <div class="card bg-dark p-5 shadow-lg">
-
-        <h1 class="text-danger text-center">
-        ⚠ HIGH RISK FILE DETECTED
-        </h1>
-
-        <hr>
-
-        <div class="row text-center mt-4">
-
-            <div class="col-md-4">
-
-                <div class="card bg-danger p-3">
-
-                    <h4>Scam Probability</h4>
-
-                    <h2>{scam_percent}%</h2>
-
-                </div>
-
-            </div>
-
-            <div class="col-md-4">
-
-                <div class="card bg-warning text-dark p-3">
-
-                    <h4>Risk Level</h4>
-
-                    <h2>{level}</h2>
-
-                </div>
-
-            </div>
-
-            <div class="col-md-4">
-
-                <div class="card bg-primary p-3">
-
-                    <h4>File Type</h4>
-
-                    <h2>{file_type}</h2>
-
-                </div>
-
-            </div>
-
-        </div>
-
-        <div class="mt-5">
-
-        <h3>
-        🚨 Suspicious Keywords
-        </h3>
-
-        <div class="alert alert-danger">
-
-        {', '.join(found) if found else 'No keywords detected'}
-
-        </div>
-
-        </div>
-
-        <div class="mt-4">
-
-        <h3>
-        📊 Threat Meter
-        </h3>
-
-        <div class="progress" style="height:35px;">
-
-        <div class="progress-bar progress-bar-striped progress-bar-animated bg-danger"
-        style="width:{scam_percent}%">
-
-        {scam_percent}%
-
-        </div>
-
-        </div>
-
-        </div>
-
-        <div class="text-center mt-5">
-
-        <a href="/"
-        class="btn btn-danger btn-lg">
-        ⬅ Back
-        </a>
-
-        <a href="/dashboard"
-        class="btn btn-light btn-lg">
-        📊 Dashboard
-        </a>
-
-        </div>
-
-        </div>
-
-        </div>
-
-        </body>
-
-        </html>
-
-        """
+        title = "⚠ Scam File Detected"
+        color = "danger"
 
     else:
 
-        return f"""
+        title = "✅ File Appears Safe"
+        color = "success"
 
-        <html>
+    return f"""
 
-        <head>
+    <html>
 
-        <title>Threat Analysis Result</title>
+    <head>
 
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
-        </head>
+    </head>
 
-        <body style="
-        background:linear-gradient(to right,#11998e,#38ef7d);
-        color:white;
-        font-family:Arial;
-        padding:40px;
-        ">
+    <body style="
+    background:linear-gradient(to right,#141e30,#243b55);
+    color:white;
+    font-family:Arial;
+    padding:40px;
+    ">
 
-        <div class="container">
+    <div class="container">
 
-        <div class="card p-5 shadow-lg">
+    <div class="card bg-dark text-white p-5">
 
-        <h1 class="text-success text-center">
-        ✅ FILE APPEARS SAFE
-        </h1>
+    <h1 class="text-{color}">
+    {title}
+    </h1>
 
-        <hr>
+    <hr>
 
-        <div class="row text-center mt-4">
+    <h3>
+    📄 File Name:
+    {file.filename}
+    </h3>
 
-            <div class="col-md-4">
+    <h3>
+    ⚠ Scam Probability:
+    {scam_percent}%
+    </h3>
 
-                <div class="card bg-success text-white p-3">
+    <h3>
+    🛡 Safe Probability:
+    {safe_percent}%
+    </h3>
 
-                    <h4>Safe Probability</h4>
+    <div class="progress mt-4" style="height:35px;">
 
-                    <h2>{safe_percent}%</h2>
+    <div class="progress-bar bg-{color}"
+    style="width:{scam_percent}%">
 
-                </div>
+    {scam_percent}%
 
-            </div>
+    </div>
 
-            <div class="col-md-4">
+    </div>
 
-                <div class="card bg-primary text-white p-3">
+    <br>
 
-                    <h4>Risk Level</h4>
+    <a href="/"
+    class="btn btn-{color}">
+    ⬅ Back
+    </a>
 
-                    <h2>LOW</h2>
+    </div>
 
-                </div>
+    </div>
 
-            </div>
+    </body>
 
-            <div class="col-md-4">
+    </html>
 
-                <div class="card bg-dark text-white p-3">
+    """
 
-                    <h4>File Type</h4>
+# ------------------ RESET DASHBOARD ------------------
 
-                    <h2>{file_type}</h2>
+@app.route('/reset')
+def reset():
 
-                </div>
+    with open("stats.txt", "w") as f:
+        f.write("0,0")
 
-            </div>
+    return """
 
-        </div>
+    <body style="
+    background:black;
+    color:white;
+    font-family:Arial;
+    padding:50px;
+    text-align:center;
+    ">
 
-        <div class="mt-5">
+    <h1>
+    ✅ Dashboard Reset Successful
+    </h1>
 
-        <h3>
-        📊 Safety Meter
-        </h3>
+    <br>
 
-        <div class="progress" style="height:35px;">
+    <a href="/dashboard"
+    style="
+    background:green;
+    color:white;
+    padding:12px 25px;
+    text-decoration:none;
+    border-radius:10px;
+    ">
+    Go To Dashboard
+    </a>
 
-        <div class="progress-bar progress-bar-striped progress-bar-animated bg-success"
-        style="width:{safe_percent}%">
+    </body>
 
-        {safe_percent}%
-
-        </div>
-
-        </div>
-
-        </div>
-
-        <div class="text-center mt-5">
-
-        <a href="/"
-        class="btn btn-success btn-lg">
-        ⬅ Back
-        </a>
-
-        <a href="/dashboard"
-        class="btn btn-dark btn-lg">
-        📊 Dashboard
-        </a>
-
-        </div>
-
-        </div>
-
-        </div>
-
-        </body>
-
-        </html>
-
-        """
+    """
 
 # ------------------ DASHBOARD ------------------
 
@@ -668,8 +523,6 @@ def dashboard():
 
     <head>
 
-    <title>Threat Intelligence Dashboard</title>
-
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -677,7 +530,7 @@ def dashboard():
     </head>
 
     <body style="
-    background:linear-gradient(to right,#0f2027,#203a43,#2c5364);
+    background:linear-gradient(to right,#141e30,#243b55);
     color:white;
     font-family:Arial;
     padding:40px;
@@ -691,63 +544,72 @@ def dashboard():
 
     <div class="row text-center">
 
-        <div class="col-md-4">
+    <div class="col-md-4">
 
-            <div class="card bg-danger p-4">
+    <div class="card bg-danger text-white p-4">
 
-                <h1>{scam}</h1>
+    <h1>{scam}</h1>
 
-                <h4>Scam Messages</h4>
+    <h3>Scam Messages</h3>
 
-            </div>
+    </div>
 
-        </div>
+    </div>
 
-        <div class="col-md-4">
+    <div class="col-md-4">
 
-            <div class="card bg-success p-4">
+    <div class="card bg-success text-white p-4">
 
-                <h1>{safe}</h1>
+    <h1>{safe}</h1>
 
-                <h4>Safe Messages</h4>
+    <h3>Safe Messages</h3>
 
-            </div>
+    </div>
 
-        </div>
+    </div>
 
-        <div class="col-md-4">
+    <div class="col-md-4">
 
-            <div class="card bg-primary p-4">
+    <div class="card bg-primary text-white p-4">
 
-                <h1>{total}</h1>
+    <h1>{total}</h1>
 
-                <h4>Total Analysis</h4>
+    <h3>Total Analysis</h3>
 
-            </div>
+    </div>
 
-        </div>
+    </div>
 
     </div>
 
     <div class="card mt-5 p-4">
 
-        <h2 class="text-dark text-center">
-        Scam Detection Analytics
-        </h2>
+    <h2 class="text-center text-dark">
+    Scam Detection Analytics
+    </h2>
 
-        <h4 class="text-center text-danger">
-        Scam Percentage: {percent:.2f}%
-        </h4>
+    <h3 class="text-center text-danger">
+    Scam Percentage: {percent:.2f}%
+    </h3>
 
-        <canvas id="chart"></canvas>
+    <canvas id="chart"></canvas>
 
     </div>
 
-    <div class="text-center mt-4">
+    <br>
+
+    <div class="text-center">
+
+    <a href="/reset"
+    class="btn btn-danger btn-lg">
+    🔄 Reset Dashboard
+    </a>
+
+    <br><br>
 
     <a href="/"
     class="btn btn-light btn-lg">
-    ⬅ Back
+    ⬅ Back Home
     </a>
 
     </div>
@@ -760,7 +622,7 @@ def dashboard():
 
     new Chart(ctx, {{
 
-        type: 'doughnut',
+        type: 'pie',
 
         data: {{
 
