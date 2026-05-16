@@ -1,8 +1,7 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request
 import pickle
-from collections import Counter
 import os
-import re
+import PyPDF2
 
 app = Flask(__name__)
 
@@ -11,129 +10,125 @@ app = Flask(__name__)
 model_lr = pickle.load(open("model.pkl", "rb"))
 vectorizer = pickle.load(open("vectorizer.pkl", "rb"))
 
-# ------------------ STATS FUNCTION ------------------
-
-def update_stats(is_scam, words_list):
-
-    try:
-        with open("stats.txt", "r") as f:
-            scam, safe = map(int, f.read().split(","))
-    except:
-        scam, safe = 0, 0
-
-    if is_scam:
-        scam += 1
-    else:
-        safe += 1
-
-    with open("stats.txt", "w") as f:
-        f.write(f"{scam},{safe}")
-
-    # Save analytics words
-    try:
-        with open("words.txt", "r") as f:
-            data = f.read().split(",")
-    except:
-        data = []
-
-    data.extend(words_list)
-
-    with open("words.txt", "w") as f:
-        f.write(",".join(data))
-
-
-# ------------------ HOME ------------------
+# ------------------ HOME PAGE ------------------
 
 @app.route('/')
-
 def home():
 
-    return '''
+    return """
+
     <html>
 
     <head>
 
-    <title>AI Scam Detector</title>
+    <title>AI Scam Detection System</title>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
     <style>
 
     body{
-        background: linear-gradient(135deg,#141e30,#243b55);
+        background: linear-gradient(to right,#141e30,#243b55);
         color:white;
-        height:100vh;
+        font-family:Arial;
+    }
+
+    .main-box{
+        margin-top:80px;
     }
 
     .card{
-        border-radius:25px;
-        box-shadow:0px 10px 40px rgba(0,0,0,0.5);
-        background:#ffffff;
-        color:black;
-    }
-
-    textarea{
-        height:120px;
+        border-radius:20px;
+        box-shadow:0px 8px 25px rgba(0,0,0,0.4);
     }
 
     </style>
 
     </head>
 
-    <body class="d-flex justify-content-center align-items-center">
+    <body>
 
-    <div class="card p-4" style="width:500px;">
+    <div class="container main-box">
 
-        <h2 class="text-center mb-3">🛡 AI Scam Detection System</h2>
+    <div class="text-center">
 
-        <form method="POST" action="/predict">
+    <h1>
+    🛡 AI Scam Detection & Threat Analysis System
+    </h1>
 
-            <textarea class="form-control"
-            name="msg"
-            placeholder="Enter suspicious message"></textarea>
+    <p>
+    Advanced Cybersecurity Intelligence Platform
+    </p>
 
-            <button class="btn btn-danger mt-3 w-100">
-            Detect Scam
-            </button>
+    </div>
 
-        </form>
+    <div class="card p-5 mt-4">
 
-        <form method="POST"
-        action="/upload"
-        enctype="multipart/form-data"
-        class="mt-3">
+    <h3 class="text-dark">
+    📩 Message Analysis
+    </h3>
 
-            <input class="form-control"
-            type="file"
-            name="file">
+    <form action="/predict" method="POST">
 
-            <button class="btn btn-secondary mt-2 w-100">
-            Upload File
-            </button>
+    <textarea
+    name="msg"
+    class="form-control"
+    rows="5"
+    placeholder="Enter suspicious message..."
+    required></textarea>
 
-        </form>
+    <br>
 
-        <a href="/dashboard"
-        class="btn btn-dark mt-3">
-        📊 Open Dashboard
-        </a>
+    <button class="btn btn-danger">
+    Analyze Message
+    </button>
 
-        <a href="/reset"
-        class="btn btn-warning mt-2">
-        Reset Analytics
-        </a>
+    </form>
+
+    <hr>
+
+    <h3 class="text-dark">
+    📂 File Threat Analysis
+    </h3>
+
+    <form action="/upload"
+    method="POST"
+    enctype="multipart/form-data">
+
+    <input
+    type="file"
+    name="file"
+    class="form-control"
+    required>
+
+    <br>
+
+    <button class="btn btn-primary">
+    Upload & Analyze File
+    </button>
+
+    </form>
+
+    <br>
+
+    <a href="/dashboard"
+    class="btn btn-dark">
+    📊 Open Analytics Dashboard
+    </a>
+
+    </div>
 
     </div>
 
     </body>
+
     </html>
-    '''
 
+    """
 
-# ------------------ PREDICT ------------------
+# ------------------ PREDICT MESSAGE ------------------
 
 @app.route('/predict', methods=['POST'])
-
 def predict():
 
     msg = request.form['msg']
@@ -148,25 +143,21 @@ def predict():
 
     safe_percent = round((1 - prob) * 100, 2)
 
-    # ------------------ RISK LEVEL ------------------
+    # ---------------- RISK LEVEL ----------------
 
     if prob > 0.8:
         level = "EXTREME"
-        color = "darkred"
 
     elif prob > 0.6:
         level = "HIGH"
-        color = "red"
 
     elif prob > 0.4:
         level = "MEDIUM"
-        color = "orange"
 
     else:
         level = "LOW"
-        color = "green"
 
-    # ------------------ DANGER WORDS ------------------
+    # ---------------- DANGER WORDS ----------------
 
     danger_words = [
         "win",
@@ -185,7 +176,7 @@ def predict():
 
     found = [w for w in danger_words if w in msg.lower()]
 
-    # ------------------ PHISHING DETECTION ------------------
+    # ---------------- PHISHING DETECTION ----------------
 
     phishing_words = [
         "http",
@@ -202,116 +193,79 @@ def predict():
         w for w in phishing_words if w in msg.lower()
     ]
 
-    # ------------------ LINK DETECTION ------------------
-
-    urls = re.findall(r'(https?://\\S+)', msg)
-
-    # ------------------ EXPLAINABLE AI ------------------
-
-    highlighted = msg
-
-    for w in danger_words:
-
-        highlighted = highlighted.replace(
-            w,
-            f"<span style='color:red;font-weight:bold'>{w}</span>"
-        )
-
-    update_stats(result == 1, found)
-
-    # ------------------ RESULT PAGE ------------------
+    # ---------------- SCAM RESULT ----------------
 
     if result == 1:
 
         return f"""
 
         <body style="
-        background:#1b1b1b;
+        background:#121212;
         color:white;
-        display:flex;
-        justify-content:center;
-        align-items:center;
-        height:100vh;
+        font-family:Arial;
+        padding:40px;
         ">
 
-        <div style="
-        background:white;
-        color:black;
-        width:650px;
-        padding:35px;
-        border-radius:25px;
-        box-shadow:0px 10px 40px rgba(0,0,0,0.6);
-        ">
+        <div class="container">
 
-        <h1 style="color:red;">
-        ⚠ SCAM DETECTED
+        <div class="card bg-dark text-white p-5 shadow-lg">
+
+        <h1 class="text-danger">
+        ⚠ Threat Detected
         </h1>
 
         <hr>
 
         <h3>
-        Scam Probability:
-        <span style="color:red;">
-        {scam_percent}%
-        </span>
+        Scam Probability: {scam_percent}%
         </h3>
 
         <h4>
-        Safe Probability:
-        <span style="color:green;">
-        {safe_percent}%
-        </span>
+        Risk Level:
+        <span class="text-warning">{level}</span>
         </h4>
 
         <h4>
-        Threat Level:
-        <span style="color:{color};">
-        {level}
-        </span>
+        🚨 Danger Words:
         </h4>
 
-        <hr>
-
-        <h5>🧠 Explainable AI Analysis</h5>
-
         <p>
-        <b>Detected Scam Keywords:</b>
         {', '.join(found) if found else 'None'}
         </p>
 
+        <h4>
+        🌐 Phishing Indicators:
+        </h4>
+
         <p>
-        <b>Phishing Indicators:</b>
         {', '.join(phishing_found) if phishing_found else 'None'}
         </p>
 
-        <p>
-        <b>URLs Found:</b>
-        {', '.join(urls) if urls else 'No Links'}
-        </p>
+        <div class="progress mt-4">
 
-        <p>
-        <b>Highlighted Message:</b>
-        <br><br>
-        {highlighted}
-        </p>
+        <div class="progress-bar bg-danger"
+        style="width:{scam_percent}%">
+        {scam_percent}%
+        </div>
 
-        <hr>
+        </div>
+
+        <br>
 
         <a href="/"
-        style="
-        padding:12px 20px;
-        background:black;
-        color:white;
-        border-radius:10px;
-        text-decoration:none;
-        ">
+        class="btn btn-danger">
         ⬅ Back
         </a>
 
         </div>
 
+        </div>
+
         </body>
+
         """
+
+    # ---------------- SAFE RESULT ----------------
 
     else:
 
@@ -319,252 +273,112 @@ def predict():
 
         <body style="
         background:#e8fff0;
-        display:flex;
-        justify-content:center;
-        align-items:center;
-        height:100vh;
+        font-family:Arial;
+        padding:40px;
         ">
 
-        <div style="
-        background:white;
-        width:600px;
-        padding:35px;
-        border-radius:25px;
-        text-align:center;
-        ">
+        <div class="container">
 
-        <h1 style="color:green;">
-        ✅ SAFE MESSAGE
+        <div class="card p-5 shadow-lg">
+
+        <h1 class="text-success">
+        ✅ Message Appears Safe
         </h1>
 
         <hr>
 
         <h3>
-        Safe Probability:
-        {safe_percent}%
+        Safe Probability: {safe_percent}%
         </h3>
 
-        <p>{highlighted}</p>
+        <h4>
+        Risk Level: LOW
+        </h4>
 
-        <a href="/">⬅ Back</a>
+        <h4>
+        🌐 Phishing Indicators:
+        </h4>
+
+        <p>
+        {', '.join(phishing_found) if phishing_found else 'None'}
+        </p>
+
+        <div class="progress mt-4">
+
+        <div class="progress-bar bg-success"
+        style="width:{safe_percent}%">
+        {safe_percent}%
+        </div>
+
+        </div>
+
+        <br>
+
+        <a href="/"
+        class="btn btn-success">
+        ⬅ Back
+        </a>
+
+        </div>
 
         </div>
 
         </body>
+
         """
 
-
-# ------------------ FILE UPLOAD ------------------
+# ------------------ FILE UPLOAD ANALYSIS ------------------
 
 @app.route('/upload', methods=['POST'])
-
 def upload():
+
+    if 'file' not in request.files:
+        return "<h2>No file selected</h2>"
 
     file = request.files['file']
 
-    lines = file.read().decode('utf-8').splitlines()
+    text = ""
 
-    output = ""
+    # TXT FILE
 
-    for msg in lines:
+    if file.filename.endswith('.txt'):
 
-        data = vectorizer.transform([msg])
+        text = file.read().decode('utf-8')
 
-        result = model_lr.predict(data)[0]
+    # PDF FILE
 
-        words = ["win","free","otp","bank","click"]
+    elif file.filename.endswith('.pdf'):
 
-        found = [w for w in words if w in msg.lower()]
+        pdf_reader = PyPDF2.PdfReader(file)
 
-        update_stats(result == 1, found)
+        for page in pdf_reader.pages:
 
-        if result == 1:
+            extracted = page.extract_text()
 
-            output += f"""
-            <p style='color:red;'>
-            ⚠ Scam → {msg}
-            </p>
-            """
+            if extracted:
+                text += extracted
 
-        else:
+    else:
 
-            output += f"""
-            <p style='color:green;'>
-            ✅ Safe → {msg}
-            </p>
-            """
+        return """
 
-    return f"""
+        <body style="font-family:Arial;padding:40px;">
 
-    <body style='padding:40px;font-family:Arial;'>
+        <h2>
+        ❌ Only TXT and PDF files supported
+        </h2>
 
-    <h1>📁 File Scan Results</h1>
+        <a href="/">
+        Go Back
+        </a>
 
-    <hr>
+        </body>
 
-    {output}
+        """
 
-    <br>
+    # ---------------- AI ANALYSIS ----------------
 
-    <a href='/'>⬅ Back</a>
-
-    </body>
-    """
-
-
-# ------------------ DASHBOARD ------------------
-
-@app.route('/dashboard')
-
-def dashboard():
-
-    try:
-
-        with open("stats.txt", "r") as f:
-            scam, safe = map(int, f.read().split(","))
-
-    except:
-
-        scam, safe = 0, 0
-
-    total = scam + safe
-
-    percent = (scam / total * 100) if total else 0
-
-    return f"""
-
-    <html>
-
-    <head>
-
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-
-    </head>
-
-    <body style="
-    background:#0f2027;
-    color:white;
-    padding:40px;
-    ">
-
-    <h1 class="text-center">
-    📊 Threat Intelligence Dashboard
-    </h1>
-
-    <div class="row mt-5 text-center">
-
-        <div class="col-md-4">
-
-            <div class="card bg-danger text-white p-4">
-
-                <h2>{scam}</h2>
-
-                <h4>Scam Messages</h4>
-
-            </div>
-
-        </div>
-
-        <div class="col-md-4">
-
-            <div class="card bg-success text-white p-4">
-
-                <h2>{safe}</h2>
-
-                <h4>Safe Messages</h4>
-
-            </div>
-
-        </div>
-
-        <div class="col-md-4">
-
-            <div class="card bg-primary text-white p-4">
-
-                <h2>{total}</h2>
-
-                <h4>Total Analysis</h4>
-
-            </div>
-
-        </div>
-
-    </div>
-
-    <div class="card mt-5 p-4">
-
-        <h3 class="text-center text-dark">
-        Scam Percentage: {percent:.2f}%
-        </h3>
-
-        <canvas id="chart"></canvas>
-
-    </div>
-
-    <script>
-
-    const ctx = document.getElementById('chart');
-
-    new Chart(ctx, {
-
-        type: 'doughnut',
-
-        data: {
-
-            labels: ['Scam', 'Safe'],
-
-            datasets: [{
-    data: [scam, safe],
-    backgroundColor: ['red', 'green']
-            }]
-
-        }
-
-    });
-
-    </script>
-
-    <div class="text-center mt-4">
-
-    <a href="/"
-    class="btn btn-light">
-    ⬅ Back
-    </a>
-
-    </div>
-
-    </body>
-    </html>
-    """
-
-
-# ------------------ RESET ------------------
-
-@app.route('/reset')
-
-def reset():
-
-    open("stats.txt", "w").write("0,0")
-
-    open("words.txt", "w").write("")
-
-    return """
-    <h2>Analytics Reset Done</h2>
-    <a href="/">Back</a>
-    """
-
-
-# ------------------ API ------------------
-
-@app.route('/api', methods=['POST'])
-
-def api():
-
-    msg = request.form['msg']
-
-    data = vectorizer.transform([msg])
+    data = vectorizer.transform([text])
 
     result = model_lr.predict(data)[0]
 
@@ -574,7 +388,6 @@ def api():
 
     safe_percent = round((1 - prob) * 100, 2)
 
-    # Risk level
     if prob > 0.8:
         level = "EXTREME"
 
@@ -587,7 +400,6 @@ def api():
     else:
         level = "LOW"
 
-    # Danger words
     danger_words = [
         "win",
         "free",
@@ -599,68 +411,199 @@ def api():
         "verify",
         "account",
         "gift",
-        "prize",
         "money"
     ]
 
-    found = [w for w in danger_words if w in msg.lower()]
+    found = [w for w in danger_words if w in text.lower()]
 
-    # Phishing detection
-    phishing_words = [
-        "http",
-        "https",
-        ".xyz",
-        ".ru",
-        ".tk",
-        "login",
-        "verify",
-        "account"
-    ]
+    # ---------------- SCAM FILE ----------------
 
-    phishing_found = [
-        w for w in phishing_words if w in msg.lower()
-    ]
-
-    # Scam response
     if result == 1:
 
-        return jsonify({
+        return f"""
 
-            "prediction": "Scam",
+        <body style="
+        background:black;
+        color:white;
+        font-family:Arial;
+        padding:40px;
+        ">
 
-            "probability": scam_percent,
+        <h1 style="color:red;">
+        ⚠ Scam File Detected
+        </h1>
 
-            "safe_probability": safe_percent,
+        <h2>
+        Scam Probability: {scam_percent}%
+        </h2>
 
-            "risk_level": level,
+        <h3>
+        Risk Level: {level}
+        </h3>
 
-            "danger_words": found,
+        <h3>
+        Danger Words:
+        {', '.join(found)}
+        </h3>
 
-            "phishing_indicators": phishing_found,
+        <div style="
+        background:#333;
+        width:100%;
+        height:30px;
+        border-radius:10px;
+        overflow:hidden;
+        ">
 
-            "status": "danger"
+        <div style="
+        background:red;
+        width:{scam_percent}%;
+        height:30px;
+        text-align:center;
+        ">
+        {scam_percent}%
+        </div>
 
-        })
+        </div>
 
-    # Safe response
+        <br>
+
+        <a href="/"
+        style="
+        background:red;
+        color:white;
+        padding:10px 20px;
+        text-decoration:none;
+        border-radius:10px;
+        ">
+        ⬅ Back
+        </a>
+
+        </body>
+
+        """
+
+    # ---------------- SAFE FILE ----------------
+
     else:
 
-        return jsonify({
+        return f"""
 
-            "prediction": "Safe",
+        <body style="
+        background:#e8fff0;
+        font-family:Arial;
+        padding:40px;
+        ">
 
-            "probability": safe_percent,
+        <h1 style="color:green;">
+        ✅ File Appears Safe
+        </h1>
 
-            "risk_level": "LOW",
+        <h2>
+        Safe Probability: {safe_percent}%
+        </h2>
 
-            "danger_words": found,
+        <h3>
+        Risk Level: LOW
+        </h3>
 
-            "phishing_indicators": phishing_found,
+        <div style="
+        background:#ccc;
+        width:100%;
+        height:30px;
+        border-radius:10px;
+        overflow:hidden;
+        ">
 
-            "status": "safe"
+        <div style="
+        background:green;
+        width:{safe_percent}%;
+        height:30px;
+        text-align:center;
+        color:white;
+        ">
+        {safe_percent}%
+        </div>
 
-        })
+        </div>
 
+        <br>
+
+        <a href="/"
+        style="
+        background:green;
+        color:white;
+        padding:10px 20px;
+        text-decoration:none;
+        border-radius:10px;
+        ">
+        ⬅ Back
+        </a>
+
+        </body>
+
+        """
+
+# ------------------ DASHBOARD ------------------
+
+@app.route('/dashboard')
+def dashboard():
+
+    return """
+
+    <body style="
+    background:#0f2027;
+    color:white;
+    font-family:Arial;
+    padding:40px;
+    ">
+
+    <h1>
+    📊 Threat Intelligence Dashboard
+    </h1>
+
+    <div style="
+    background:#1c1c1c;
+    padding:30px;
+    border-radius:20px;
+    margin-top:30px;
+    ">
+
+    <h3>
+    🛡 System Status: ACTIVE
+    </h3>
+
+    <p>
+    AI Threat Analysis Engine is running successfully.
+    </p>
+
+    <p>
+    Features Enabled:
+    </p>
+
+    <ul>
+    <li>✔ Scam Message Detection</li>
+    <li>✔ PDF Threat Analysis</li>
+    <li>✔ TXT File Analysis</li>
+    <li>✔ Phishing Detection</li>
+    <li>✔ Risk Level Analytics</li>
+    </ul>
+
+    <a href="/"
+    style="
+    background:white;
+    color:black;
+    padding:10px 20px;
+    text-decoration:none;
+    border-radius:10px;
+    ">
+    ⬅ Back
+    </a>
+
+    </div>
+
+    </body>
+
+    """
 
 # ------------------ RUN ------------------
 
